@@ -1,0 +1,1 @@
+Convert an exported list of IMDb ratings to .md files that may be used by the static page generator hugo. 
