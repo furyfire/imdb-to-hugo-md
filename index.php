@@ -26,33 +26,33 @@ function yaml_escape($instance, string $value, $charset): string
 }
 
 
-use League\Csv\Reader;
-use League\Csv\Statement;
+$climate = new League\CLImate\CLImate;
+
 //load the CSV document from a file path
 
 if($argc != 3)
 {
-    die("Please provide an input CSV file and an output folder");
+    $climate->error("Please provide an input CSV file and an output folder");
+    die -1;
 }
-$csv = Reader::createFromPath($argv[1], 'r');
+$csv = League\Csv\Reader::createFromPath($argv[1], 'r');
 $csv->setHeaderOffset(0);
 
 $loader = new \Twig\Loader\FilesystemLoader('.');
 $twig = new \Twig\Environment($loader, ['autoescape'=>false]);
 $twig->getExtension(\Twig\Extension\EscaperExtension::class)->setEscaper('yaml', 'yaml_escape');
 
-$count = $csv->count();
-
 $config = new \Imdb\Config();
 $config->language = 'en';
 
+$progress = $climate->progress()->total($csv->count());
 $genres = array();
 foreach($csv as $index=>$rating)
 {
     //Progress bar
     $title = $rating['Title'];
-    echo "Processing ($index/$count) - $title \n";
-    echo "Before: ".memory_get_usage().PHP_EOL;
+    $progress->current($index, $rating['Title']);
+    //echo "Processing ($index/$count) - $title \n";
     
     //Create IMDbPHP instance
     $imdb = new \Imdb\Title($rating['Const'], $config);
@@ -72,8 +72,4 @@ foreach($csv as $index=>$rating)
     unset($imdb, $title);
 }
 
-foreach($genres as $g)
-{
-    echo "- name: \"$g\"\n";
-    echo "  tag:  \"$g\"\n";
-}
+$climate->json($genres);
