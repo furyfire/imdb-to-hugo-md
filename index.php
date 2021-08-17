@@ -1,5 +1,8 @@
 <?php
 
+include "vendor/autoload.php";
+
+
 const ESCAPEES = ['\\', '\\\\', '\\"', '"',
 "\x00",  "\x01",  "\x02",  "\x03",  "\x04",  "\x05",  "\x06",  "\x07",
 "\x08",  "\x09",  "\x0a",  "\x0b",  "\x0c",  "\x0d",  "\x0e",  "\x0f",
@@ -23,34 +26,33 @@ function yaml_escape($instance, string $value, $charset): string
 }
 
 
-include "vendor/autoload.php";
-
-
 use League\Csv\Reader;
 use League\Csv\Statement;
 //load the CSV document from a file path
 
-$csv = Reader::createFromPath('ratings.csv', 'r');
+if($argc != 3)
+{
+    die("Please provide an input CSV file and an output folder");
+}
+$csv = Reader::createFromPath($argv[1], 'r');
 $csv->setHeaderOffset(0);
-
-$stmt = (new Statement())->offset(0);
-
-$records = $stmt->process($csv);
 
 $loader = new \Twig\Loader\FilesystemLoader('.');
 $twig = new \Twig\Environment($loader, ['autoescape'=>false]);
 $twig->getExtension(\Twig\Extension\EscaperExtension::class)->setEscaper('yaml', 'yaml_escape');
-$count = $records->count();
+
+$count = $csv->count();
 
 $config = new \Imdb\Config();
 $config->language = 'en';
 
 $genres = array();
-foreach($records as $index=>$rating)
+foreach($csv as $index=>$rating)
 {
-    //Progressbar
+    //Progress bar
     $title = $rating['Title'];
     echo "Processing ($index/$count) - $title \n";
+    echo "Before: ".memory_get_usage().PHP_EOL;
     
     //Create IMDbPHP instance
     $imdb = new \Imdb\Title($rating['Const'], $config);
@@ -64,10 +66,10 @@ foreach($records as $index=>$rating)
 
     //Render through Twig
     $file_contents = $twig->render('template.md', ['title' => $title, 'movie' => $imdb, 'rating'=>$rating]);
-    
     //Write to File
-    $filename = $argv[1].'/'.$rating['Const'].'.md';
+    $filename = $argv[2].'/'.$rating['Const'].'.md';
     file_put_contents($filename, $file_contents);
+    unset($imdb, $title);
 }
 
 foreach($genres as $g)
